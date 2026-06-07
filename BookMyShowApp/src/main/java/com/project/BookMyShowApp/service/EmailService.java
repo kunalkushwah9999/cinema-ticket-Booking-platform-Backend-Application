@@ -7,6 +7,7 @@ import com.project.BookMyShowApp.repository.BookingRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -21,6 +22,7 @@ public class EmailService {
     @Autowired
     private BookingRepository bookingRepository;
 
+    @Async
     public void sendSuccessfulEmail(String toEmail, Long bookingId, List<ShowSeat> list){
         Optional<Booking> booking = bookingRepository.findById(bookingId);
         String bookingNo = booking.get().getBookingNumber();
@@ -42,6 +44,7 @@ public class EmailService {
         javaMailSender.send(message);
     }
 
+    @Async
     public void sendFailedEmail(String toEmail){
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(toEmail);

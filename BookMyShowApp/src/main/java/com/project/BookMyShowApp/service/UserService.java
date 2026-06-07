@@ -67,7 +67,7 @@ public class UserService {
         Role userRole = roleRepository.findByName("ROLE_USER")
                 .orElseThrow(() -> new ResourceNotFoundException("ROLE_USER not found"));
         user.getRoles().add(userRole);
-        User savedUser = userRepository.save(user);
+        //User savedUser*/8 = userRepository.save(user).36
         return mapToDto(user);
     }
 
