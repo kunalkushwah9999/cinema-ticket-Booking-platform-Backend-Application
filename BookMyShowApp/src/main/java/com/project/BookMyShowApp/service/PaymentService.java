@@ -89,7 +89,7 @@ public class PaymentService {
 
 
 
-    @Transactional // <-- Make this transactional
+    @Transactional // Make this transactional
     public void verifyPayment(PaymentVerficationRequest request) throws Exception {
 
         // 1. Find the payment record
@@ -105,17 +105,17 @@ public class PaymentService {
         boolean isSignatureValid = Utils.verifyPaymentSignature(options, this.keySecret);
 
         if (isSignatureValid) {
-            // --- 3. PAYMENT IS SUCCESSFUL ---
+            // PAYMENT IS SUCCESSFUL
             payment.setStatus("PAID");
             payment.setRazorpayPaymentId(request.getRazorpayPaymentId());
             payment.setRazorpaySignature(request.getRazorpaySignature());
             payment.setPaymentTime(LocalDateTime.now());
 
-            // --- 4. FIND AND UPDATE BOOKING ---
+            //4. FIND AND UPDATE BOOKING
             Booking booking = payment.getBooking();
             booking.setStatus("CONFIRMED");
 
-            // --- 5. FIND AND UPDATE SEATS ---
+            // 5. FIND AND UPDATE SEATS
             List<ShowSeat> showSeatList = showSeatRepository.findByBookingId(booking.getId());
             Seat[] seatList = new Seat[showSeatList.size()];
             int i=0;
@@ -123,7 +123,7 @@ public class PaymentService {
                 seat.setStatus("BOOKED");
                 seatList[i++] = seat.getSeat();
             }
-            // --- 6. SAVE ALL CHANGES ---
+            // 6. SAVE ALL CHANGES ---
             paymentRepository.save(payment);
             bookingRepository.save(booking);
             showSeatRepository.saveAll(showSeatList);
@@ -132,12 +132,12 @@ public class PaymentService {
 
 
         } else {
-            // --- 3. PAYMENT FAILED ---
+            // 3. PAYMENT FAILED
             payment.setStatus("FAILED");
             Booking booking = payment.getBooking();
             booking.setStatus("FAILED");
 
-            // --- 4. RELEASE THE SEATS ---
+            // 4. RELEASE THE SEATS
             List<ShowSeat> showSeatList = showSeatRepository.findByBookingId(booking.getId());
             for (ShowSeat seat : showSeatList) {
                 seat.setStatus("AVAILABLE"); // Release the lock
