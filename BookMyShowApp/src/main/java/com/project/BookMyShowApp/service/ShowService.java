@@ -2,14 +2,8 @@ package com.project.BookMyShowApp.service;
 
 import com.project.BookMyShowApp.dto.*;
 import com.project.BookMyShowApp.exception.ResourceNotFoundException;
-import com.project.BookMyShowApp.model.Movie;
-import com.project.BookMyShowApp.model.Screen;
-import com.project.BookMyShowApp.model.Show;
-import com.project.BookMyShowApp.model.ShowSeat;
-import com.project.BookMyShowApp.repository.MovieRepository;
-import com.project.BookMyShowApp.repository.ScreenRepository;
-import com.project.BookMyShowApp.repository.ShowRepository;
-import com.project.BookMyShowApp.repository.ShowSeatRepository;
+import com.project.BookMyShowApp.model.*;
+import com.project.BookMyShowApp.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -17,6 +11,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+import com.project.BookMyShowApp.repository.SeatRepository;
+import com.project.BookMyShowApp.model.Seat;
 
 @Service
 public class ShowService {
@@ -33,6 +29,9 @@ public class ShowService {
     @Autowired
     private ShowSeatRepository showSeatRepository;
 
+    @Autowired
+    private SeatRepository seatRepository;
+
 
     public ShowDto createShow(ShowDto showDto){
         Movie movie = movieRepository.findById(showDto.getMovie().getId())
@@ -48,9 +47,29 @@ public class ShowService {
         show.setScreen(screen);
 
         Show savedShow = showRepository.save(show);
-        List<ShowSeat> availableSeats = showSeatRepository.findByShowIdAndStatus(savedShow.getId(), "AVAILABLE");
+//        List<ShowSeat> availableSeats = showSeatRepository.findByShowIdAndStatus(savedShow.getId(), "AVAILABLE");
+        List<Seat> screenSeats = seatRepository.findByScreenId(screen.getId());
 
-        return mapToDto(savedShow, availableSeats);
+        if (screenSeats.isEmpty()) {
+            throw new ResourceNotFoundException(
+                    "No seats configured for Screen id: " + screen.getId() +
+                            ". Please add seats to this screen before creating a show.");
+        }
+
+        List<ShowSeat> newShowSeats = screenSeats.stream()
+                .map(seat -> {
+                    ShowSeat showSeat = new ShowSeat();
+                    showSeat.setShow(savedShow);
+                    showSeat.setSeat(seat);
+                    showSeat.setStatus("AVAILABLE");
+                    showSeat.setPrice(seat.getBasePrice());
+                    return showSeat;
+                })
+                .collect(Collectors.toList());
+
+        List<ShowSeat> savedShowSeats = showSeatRepository.saveAll(newShowSeats);
+        return mapToDto(savedShow, savedShowSeats);
+//        return mapToDto(savedShow, availableSeats);
     }
 
     public ShowDto getShowById(Long id){
