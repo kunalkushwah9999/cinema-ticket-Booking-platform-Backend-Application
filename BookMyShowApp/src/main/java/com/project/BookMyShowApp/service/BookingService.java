@@ -9,7 +9,6 @@ import com.project.BookMyShowApp.repository.ShowRepository;
 import com.project.BookMyShowApp.repository.ShowSeatRepository;
 import com.project.BookMyShowApp.repository.UserRepository;
 import com.razorpay.RazorpayException;
-import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,27 +33,34 @@ public class BookingService {
     @Autowired
     private ShowSeatRepository showSeatRepository;
 
-//    @Autowired
-//    private PaymentService paymentService;
-
     @Autowired
     private EmailService emailService;
 
-
     @Transactional
     public BookingResponseDto createBooking(BookingRequestDto bookingRequestDto) throws RazorpayException {
+
         System.out.println("In Booking Service");
-        User user = userRepository.findById(bookingRequestDto.getUserId())
-                .orElseThrow(() -> new ResourceNotFoundException("User Not Found"));
 
-        Show show = showRepository.findById(bookingRequestDto.getShowId())
-                .orElseThrow(() -> new ResourceNotFoundException("Resource Not Found"));
+        User user = userRepository
+                .findById(bookingRequestDto.getUserId())
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User Not Found"));
 
-        List<ShowSeat> showSeatList = showSeatRepository.findAllById(bookingRequestDto.getSeatIds());
+        Show show = showRepository
+                .findById(bookingRequestDto.getShowId())
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Resource Not Found"));
 
-        for(ShowSeat showSeat : showSeatList){
-            if(!"AVAILABLE".equals(showSeat.getStatus())){
-                throw new SeatNotAvailableException("Seat " + showSeat.getSeat().getId() + "is not available");
+        // ✅ CHANGE 1 — findAllById → findAllByIdWithLock
+        List<ShowSeat> showSeatList =
+                showSeatRepository.findAllByIdWithLock(
+                        bookingRequestDto.getSeatIds());
+
+        for (ShowSeat showSeat : showSeatList) {
+            if (!"AVAILABLE".equals(showSeat.getStatus())) {
+                throw new SeatNotAvailableException(
+                        "Seat " + showSeat.getSeat().getId() +
+                                " is not available");
             }
             showSeat.setStatus("LOCKED");
         }
@@ -73,12 +79,6 @@ public class BookingService {
         booking.setBookingNumber(UUID.randomUUID().toString());
         booking.setTotalAmount(totalAmount);
 
-//        String razorpayOrderString = paymentService.createOrder(totalAmount);
-//
-//        JSONObject razorpayOrder = new JSONObject(razorpayOrderString);
-//        String razorpayOrderId = razorpayOrder.getString("id");
-//        String receiptId = razorpayOrder.getString("receipt");
-//
         Payment payment = new Payment();
         payment.setAmount(totalAmount);
         payment.setStatus("CREATE");
@@ -95,91 +95,83 @@ public class BookingService {
 
         Booking savedBooking = bookingRepository.save(booking);
 
-        for(ShowSeat seat : showSeatList){
+        for (ShowSeat seat : showSeatList) {
             seat.setBooking(savedBooking);
         }
 
         showSeatRepository.saveAll(showSeatList);
 
         System.out.println("Calling Email Service");
-        emailService.sendSuccessfulEmail(user.getEmail(), booking.getId(), showSeatList);
+        emailService.sendSuccessfulEmail(
+                user.getEmail(),
+                booking.getId(),
+                showSeatList);
 
         return new BookingResponseDto(
                 savedBooking.getId(),
-                //razorpayOrderId,
-                totalAmount
-                // "RAZORPAY_KEY_ID" // Get this from @Value
-        );
-
+                totalAmount);
     }
 
-    public BookingDto getBookingById(Long id){
+    public BookingDto getBookingById(Long id) {
         Booking booking = bookingRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Booking Not Found"));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Booking Not Found"));
 
-        List<ShowSeat> showSeatList = showSeatRepository.findAll()
-                .stream()
-                .filter(seat -> seat.getBooking()!=null && seat.getBooking().getId().equals(booking.getId()))
-                .collect(Collectors.toList());
-
-        return mapToBookingDto(booking, showSeatList);
-
-    }
-
-    public BookingDto getBookingByBookingNumber(String bookingNumber){
-        Booking booking = bookingRepository.findByBookingNumber(bookingNumber)
-                .orElseThrow(() -> new ResourceNotFoundException("Booking Not Found"));
-
-        List<ShowSeat> showSeatList = showSeatRepository.findAll()
-                .stream()
-                .filter(seat -> seat.getBooking()!=null && seat.getBooking().getId().equals(booking.getId()))
-                .collect(Collectors.toList());
+        // ✅ CHANGE 2 — findAll().stream().filter() → findByBookingId()
+        List<ShowSeat> showSeatList =
+                showSeatRepository.findByBookingId(booking.getId());
 
         return mapToBookingDto(booking, showSeatList);
-
     }
 
-    public List<BookingDto> getBookingByUserId(Long id){
+    public BookingDto getBookingByBookingNumber(String bookingNumber) {
+        Booking booking = bookingRepository
+                .findByBookingNumber(bookingNumber)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Booking Not Found"));
+
+        // ✅ CHANGE 3 — findAll().stream().filter() → findByBookingId()
+        List<ShowSeat> showSeatList =
+                showSeatRepository.findByBookingId(booking.getId());
+
+        return mapToBookingDto(booking, showSeatList);
+    }
+
+    public List<BookingDto> getBookingByUserId(Long id) {
         List<Booking> bookings = bookingRepository.findByUserId(id);
         return bookings.stream()
                 .map(booking -> {
-                    List<ShowSeat> seats = showSeatRepository.findAll()
-                            .stream()
-                            .filter(seat->seat.getBooking()!=null && seat.getBooking().getId().equals(booking.getId()))
-                            .collect(Collectors.toList());
+                    // ✅ CHANGE 4 — findAll().stream().filter() → findByBookingId()
+                    List<ShowSeat> seats =
+                            showSeatRepository.findByBookingId(booking.getId());
                     return mapToBookingDto(booking, seats);
                 })
                 .collect(Collectors.toList());
-
     }
 
     @Transactional
-    public BookingDto cancelBooking(Long id){
+    public BookingDto cancelBooking(Long id) {
         Booking booking = bookingRepository.findById(id)
-                .orElseThrow(()->new ResourceNotFoundException("Booking Not found"));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Booking Not found"));
 
         booking.setStatus("CANCELLED");
 
-        List<ShowSeat> seats = showSeatRepository.findAll()
-                .stream()
-                .filter(seat -> seat.getBooking()!=null && seat.getBooking().getId().equals(booking.getId()))
-                .collect(Collectors.toList());
+        // ✅ CHANGE 5 — findAll().stream().filter() → findByBookingId()
+        List<ShowSeat> seats =
+                showSeatRepository.findByBookingId(booking.getId());
 
         seats.forEach(seat -> {
             seat.setStatus("AVAILABLE");
             seat.setBooking(null);
         });
 
-//        if(booking.getPayment()!=null){
-//            booking.getPayment().setStatus("REFUNDED");
-//        }
-
         Booking updatedBooking = bookingRepository.save(booking);
         showSeatRepository.saveAll(seats);
         return mapToBookingDto(updatedBooking, seats);
     }
 
-    BookingDto mapToBookingDto(Booking booking, List<ShowSeat> showSeats){
+    BookingDto mapToBookingDto(Booking booking, List<ShowSeat> showSeats) {
         BookingDto bookingDto = new BookingDto();
         bookingDto.setBookingNumber(booking.getBookingNumber());
         bookingDto.setBookingTime(booking.getBookingTime());
@@ -192,7 +184,7 @@ public class BookingService {
         userDto.setName(booking.getUser().getName());
         userDto.setPhoneNumber(booking.getUser().getPhoneNumber());
         userDto.setEmail(booking.getUser().getEmail());
-        bookingDto.setUser((userDto));
+        bookingDto.setUser(userDto);
 
         ShowDto showDto = new ShowDto();
         showDto.setId(booking.getShow().getId());
@@ -209,14 +201,15 @@ public class BookingService {
         theaterDto.setName(booking.getShow().getScreen().getTheater().getName());
         theaterDto.setAddress(booking.getShow().getScreen().getTheater().getAddress());
         theaterDto.setCity(booking.getShow().getScreen().getTheater().getCity());
-        theaterDto.setTotalScreens(booking.getShow().getScreen().getTheater().getTotalScreens());
+        theaterDto.setTotalScreens(
+                booking.getShow().getScreen().getTheater().getTotalScreens());
 
         screenDto.setTheater(theaterDto);
         showDto.setScreen(screenDto);
         bookingDto.setShow(showDto);
 
         List<ShowSeatDto> seatDtos = showSeats.stream()
-                .map(seat ->{
+                .map(seat -> {
                     ShowSeatDto showSeatDto = new ShowSeatDto();
                     showSeatDto.setId(seat.getId());
                     showSeatDto.setStatus(seat.getStatus());
@@ -233,18 +226,6 @@ public class BookingService {
                 .collect(Collectors.toList());
 
         bookingDto.setShowSeats(seatDtos);
-
-//        if(booking.getPayment()!=null){
-//            PaymentDto paymentDto = new PaymentDto();
-//            paymentDto.setId(booking.getPayment().getId());
-//            paymentDto.setTransactionId(booking.getPayment().getTransactionId());
-//            paymentDto.setPaymentTime(booking.getPayment().getPaymentTime());
-//            paymentDto.setPaymentMethod(booking.getPayment().getPaymentMethod());
-//            paymentDto.setAmount(booking.getPayment().getAmount());
-//            paymentDto.setStatus(booking.getPayment().getStatus());
-//            bookingDto.setPayment(paymentDto);
-//        }
-
         return bookingDto;
     }
 }

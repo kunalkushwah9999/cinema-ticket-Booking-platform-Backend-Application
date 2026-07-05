@@ -40,7 +40,7 @@ public class SecurityConfig {
                         //Public
                         .requestMatchers("/api/user/register", "/api/user/login").permitAll()
                         .requestMatchers("/api/movie", "/api/movie/language/{language}", "/api/movie/genre/{genre}", "/api/movie/title/{title}").permitAll()
-                        .requestMatchers("/api/show","/api/show/movie/**", "/api/show/movie/{movieId}/city/{city}", "/api/show/city/{city}/date/{date}").permitAll()
+                        .requestMatchers("api/show","/api/show/movie/**", "/api/show/movie/{movieId}/city/{city}", "/api/show/city/{city}/date/{date}").permitAll()
                         .requestMatchers("/api/theater/city/{city}").permitAll()
 
                         //User

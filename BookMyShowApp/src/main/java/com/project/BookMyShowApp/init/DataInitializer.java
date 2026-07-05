@@ -37,49 +37,25 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        Role userRole;
+
+        Role userRole = null;
         if (roleRepository.findByName("ROLE_USER").isEmpty()) {
-            userRole = roleRepository.save(new Role(null, "ROLE_USER"));
-        } else {
+            roleRepository.save(new Role(null, "ROLE_USER"));
+        }
+        else {
             userRole = roleRepository.findByName("ROLE_USER").get();
         }
 
-//        Role userRole = roleRepository.findByName("ROLE_USER")
-//                .orElseGet(() -> roleRepository.save(new Role(null, "ROLE_USER")));
-
-//        if (roleRepository.findByName("ROLE_USER").isEmpty()) {
-//            roleRepository.save(new Role(null, "ROLE_USER"));
-//        }
-//        else {
-//            userRole = roleRepository.findByName("ROLE_USER").get();
-//        }
-
-        Role theaterAdminRole;
-
         if (roleRepository.findByName("ROLE_THEATER_ADMIN").isEmpty()) {
-            theaterAdminRole = roleRepository.save(new Role(null, "ROLE_THEATER_ADMIN"));
-        } else {
-            theaterAdminRole = roleRepository.findByName("ROLE_THEATER_ADMIN").get();
+            roleRepository.save(new Role(null, "ROLE_THEATER_ADMIN"));
         }
 
-        Role adminRole;
+        Role adminRole = null;
         if (roleRepository.findByName("ROLE_ADMIN").isEmpty()) {
-
-            adminRole = roleRepository.save(new Role(null, "ROLE_ADMIN"));
+            roleRepository.save(new Role(null, "ROLE_ADMIN"));
         } else {
             adminRole = roleRepository.findByName("ROLE_ADMIN").get();
         }
-
-//        Role adminRole = roleRepository.findByName("ROLE_ADMIN")
-//                .orElseGet(() -> roleRepository.save(new Role(null, "ROLE_ADMIN")));
-
-//
-//        Role adminRole = null;
-//        if (roleRepository.findByName("ROLE_ADMIN").isEmpty()) {
-//            roleRepository.save(new Role(null, "ROLE_ADMIN"));
-//        } else {
-//            adminRole = roleRepository.findByName("ROLE_ADMIN").get();
-//        }
 
         if (userRepository.findByEmail(adminEmail).isEmpty()) {
             User adminUser = new User();
@@ -91,7 +67,7 @@ public class DataInitializer implements CommandLineRunner {
             adminUser.setRoles(Set.of(adminRole, userRole)); // Assumes User entity has a Set<Role> field
 
             userRepository.save(adminUser);
-            System.out.println("Admin user created successfully!");
+            System.out.println(" Admin user created successfully!");
         } else {
             System.out.println(" Admin user already exists, skipping creation.");
 

@@ -12,7 +12,7 @@ import java.util.Date;
 public class ErrorResponse {
 
     private Date timeStamp;
-    private int status;
+    private int status; // 401,201 etc
     private String error;
     private String message;
     private String path;

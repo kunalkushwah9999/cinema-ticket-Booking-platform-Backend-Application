@@ -1,8 +1,8 @@
 package com.project.BookMyShowApp.security;
 
+import com.project.BookMyShowApp.exception.ResourceNotFoundException;
 import com.project.BookMyShowApp.model.User;
 import com.project.BookMyShowApp.repository.UserRepository;
-import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
